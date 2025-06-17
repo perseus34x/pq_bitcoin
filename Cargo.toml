@@ -1,0 +1,19 @@
+[workspace]
+members = [
+    "lib",
+    "program",
+    "script",
+]
+resolver = "2"
+
+[workspace.dependencies]
+sp1-sdk = "3.0.0"
+sp1-zkvm = "3.0.0"
+sp1-helper = "3.0.0"
+serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+clap = { version = "4.0", features = ["derive", "env"] }
+tracing = "0.1.40"
+hex = "0.4.3"
+
+fibonacci-lib = { path = "lib" }
