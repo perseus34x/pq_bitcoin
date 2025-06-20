@@ -1,9 +1,11 @@
 [package]
 version = "0.1.0"
-name = "fibonacci-program"
+name = "pq_bitcoin-program"
 edition = "2021"
 
 [dependencies]
 alloy-sol-types = { workspace = true }
 sp1-zkvm = "5.0.0"
-fibonacci-lib = { path = "../lib" }
+pq_bitcoin-lib = { path = "../lib" }
+secp256k1 = { git = "https://github.com/sp1-patches/rust-secp256k1", branch = "patch-secp256k1-v0.29.0" }
+hashes = { package = "bitcoin_hashes", version = ">= 0.12, <= 0.14", default-features = false }
