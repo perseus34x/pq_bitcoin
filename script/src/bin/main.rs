@@ -13,12 +13,13 @@
 /// The ELF (executable and linkable format) file for the Succinct RISC-V zkVM.
 use clap::Parser;
 use hashes::{sha256, Hash};
+use pq_bitcoin_lib::public_key_to_address;
 use rand::rngs::OsRng;
 use rand::TryRngCore;
 use secp256k1::{ecdsa, Error, Message, PublicKey, Secp256k1, SecretKey, Signing};
 use sp1_sdk::{include_elf, HashableKey, ProverClient, SP1Stdin};
 use std::time::{SystemTime, UNIX_EPOCH};
-use pq_bitcoin_lib::public_key_to_address;
+
 
 pub const PROGRAM_ELF: &[u8] = include_elf!("pq_bitcoin-program");
 
@@ -50,6 +51,8 @@ fn main() {
     dotenv::dotenv().ok();
 
     let args = Args::parse();
+
+    println!("Program size is : {}", PROGRAM_ELF.len());
     if args.execute == args.prove {
         eprintln!("Error: You must specify either --execute or --prove");
         std::process::exit(1);
@@ -85,10 +88,14 @@ fn main() {
         let start_time = system_time.duration_since(UNIX_EPOCH);
         // println!("pk key {}", pk.pk.);
         println!("vk key {}", vk.bytes32());
-
+        /*
+        Public values size 224
+        Proof size 260
+        Elapsed Proving time: 389.364518s
+        */
         let proof = client
             .prove(&pk, &stdin)
-            .groth16()
+            .plonk()
             .run()
             .expect("failed to generate proof");
 

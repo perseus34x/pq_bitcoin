@@ -1,12 +1,12 @@
 [package]
 version = "0.1.0"
 name = "pq_bitcoin-program"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
+pq_bitcoin-lib = { path = "../lib" }
 alloy-sol-types = { workspace = true }
 alloy-primitives = { workspace = true }
-sp1-zkvm = "5.0.0"
-pq_bitcoin-lib = { path = "../lib" }
-hashes = { package = "bitcoin_hashes", version = ">= 0.12, <= 0.14", default-features = false }
+sp1-zkvm = { workspace = true }
+hashes = { workspace = true }
 secp256k1 = {workspace = true}

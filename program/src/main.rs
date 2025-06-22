@@ -29,26 +29,21 @@ pub fn main() {
     // Convert Vec<u8> into [u8; 33]
     let pubkey: [u8; 33] = pubkey_vec
         .try_into()
-        .expect("Public key must be exactly 33 bytes");
+        .expect("Compressed public key must be exactly 33 bytes");
     let btc_address: Vec<u8> = sp1_zkvm::io::read::<Vec<u8>>();
     let sig_serialized: Vec<u8> = sp1_zkvm::io::read::<Vec<u8>>();
     let pq_public_key: Vec<u8> = sp1_zkvm::io::read::<Vec<u8>>();
-    println!("pubkey len {:?}", pubkey.len());
+
     assert!(verify(&secp, btc_address.as_slice(), sig_serialized.try_into().unwrap(), pubkey).unwrap());
-    
-    let btc_address2 = public_key_to_address(&pubkey);
-
-   // println!("pubkey: {:?}", hex::encode(&pubkey));
-   // println!("btc_address2: {:?}", hex::encode(&btc_address2));
-
-    assert_eq!(btc_address2,btc_address);
+    let derived_btc_address = public_key_to_address(&pubkey);
+    assert_eq!(derived_btc_address, btc_address);
 
     // Encode the public values of the program.
    let bytes = PublicValuesStruct::abi_encode(&PublicValuesStruct {
        btc_address: Bytes::from(btc_address),
        pq_pubkey: Bytes::from(pq_public_key),
    });
-
+    //committing to the public parameters
     sp1_zkvm::io::commit_slice(&bytes);
 }
 
