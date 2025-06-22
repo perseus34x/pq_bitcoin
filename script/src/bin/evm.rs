@@ -1,3 +1,4 @@
+//cargo run --release --bin evm -- --system groth16
 //! An end-to-end example of using the SP1 SDK to generate a proof of a program that can have an
 //! EVM-Compatible proof generated which can be verified on-chain.
 //!
@@ -9,7 +10,7 @@
 //! ```shell
 //! RUST_LOG=info cargo run --release --bin evm -- --system plonk
 //! ```
-
+/*
 use alloy_sol_types::SolType;
 use clap::{Parser, ValueEnum};
 use pq_bitcoin_lib::PublicValuesStruct;
@@ -73,7 +74,7 @@ fn main() {
 
     stdin.write(&args.a);
     println!("a: {}", args.a);
-    
+
     println!("Proof System: {:?}", args.system);
 
     // Generate the proof based on the selected proof system.
@@ -81,7 +82,7 @@ fn main() {
         ProofSystem::Plonk => client.prove(&pk, &stdin).plonk().run(),
         ProofSystem::Groth16 => client.prove(&pk, &stdin).groth16().run(),
     }
-    .expect("failed to generate proof");
+        .expect("failed to generate proof");
 
     create_proof_fixture(&proof, &vk, args.system);
 }
@@ -129,5 +130,9 @@ fn create_proof_fixture(
         fixture_path.join(format!("{:?}-fixture.json", system).to_lowercase()),
         serde_json::to_string_pretty(&fixture).unwrap(),
     )
-    .expect("failed to write fixture");
+        .expect("failed to write fixture");
+}
+*/
+fn main() {
+    println!("Hello, world!");
 }

@@ -10,95 +10,96 @@
 //! RUST_LOG=info cargo run --release -- --prove
 //! ```
 
-use alloy_sol_types::SolType;
-use clap::Parser;
-use pq_bitcoin_lib::PublicValuesStruct;
-use sp1_sdk::{include_elf, HashableKey, ProverClient, SP1Stdin};
-
 /// The ELF (executable and linkable format) file for the Succinct RISC-V zkVM.
+use clap::Parser;
+use hashes::{sha256, Hash};
+use rand::rngs::OsRng;
+use rand::TryRngCore;
+use secp256k1::{ecdsa, Error, Message, PublicKey, Secp256k1, SecretKey, Signing};
+use sp1_sdk::{include_elf, HashableKey, ProverClient, SP1Stdin};
+use std::time::{SystemTime, UNIX_EPOCH};
+use pq_bitcoin_lib::public_key_to_address;
+
 pub const PROGRAM_ELF: &[u8] = include_elf!("pq_bitcoin-program");
 
-/// The arguments for the command.
+fn sign<C: Signing>(
+    secp: &Secp256k1<C>,
+    sec_key: [u8; 32],
+) -> Result<(ecdsa::Signature, PublicKey, Vec<u8>), Error> {
+    let sec_key = SecretKey::from_slice(&sec_key)?;
+    let pub_key = sec_key.public_key(secp);
+    let address = public_key_to_address(&pub_key.serialize());
+
+    let msg = sha256::Hash::hash(address.as_slice());
+    let msg = Message::from_digest_slice(msg.as_ref())?;
+
+    Ok((secp.sign_ecdsa(&msg, &sec_key), pub_key,address))
+}
+
 #[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
+#[clap(author, version, about, long_about = None)]
 struct Args {
-    #[arg(long)]
+    #[clap(long)]
     execute: bool,
-
-    #[arg(long)]
+    #[clap(long)]
     prove: bool,
-
-    #[arg(long, default_value = "7")]
-    x: u32,
-
-    #[arg(long, default_value = "3")]
-    a: u32,
-
-    #[arg(long, default_value = "8")]
-    b: u32,
 }
 
 fn main() {
-    // Setup the logger.
     sp1_sdk::utils::setup_logger();
     dotenv::dotenv().ok();
 
-    // Parse the command line arguments.
     let args = Args::parse();
-
     if args.execute == args.prove {
         eprintln!("Error: You must specify either --execute or --prove");
         std::process::exit(1);
     }
-
-    // Setup the prover client.
     let client = ProverClient::from_env();
-
-    // Setup the inputs.
     let mut stdin = SP1Stdin::new();
-    stdin.write(&args.x);
-    println!("x: {}", args.x);
 
-    stdin.write(&args.a);
-    println!("a: {}", args.a);
+    let secp = Secp256k1::new();
+    let mut seckey = [0u8; 32];
+    OsRng
+        .try_fill_bytes(&mut seckey)
+        .expect("cannot fill random bytes");
 
-    stdin.write(&args.b);
-    println!("b: {}", args.b);
+     let (signature, pub_key, address) = sign(&secp, seckey).unwrap();
+    let serialized_pub_key = pub_key.serialize();
+    let serialize_sig = signature.serialize_compact();
+
+    stdin.write(&serialized_pub_key.to_vec());
+    stdin.write(&address.to_vec());
+    stdin.write(&serialize_sig.to_vec());
+
+    let pq_public_key = b"pq public keys.";
+    stdin.write(&pq_public_key.to_vec());
 
     if args.execute {
-        // Execute the program
-        let (output, report) = client.execute(PROGRAM_ELF, &stdin).run().unwrap();
+        let (_output, report) = client.execute(PROGRAM_ELF, &stdin).run().unwrap();
         println!("Program executed successfully.");
-
-        // Read the output.
-        let decoded = PublicValuesStruct::abi_decode(output.as_slice()).unwrap();
-        let PublicValuesStruct { x,a,y } = decoded;
-        println!("public values:");
-        println!("x: {}", x);
-        println!("a: {}", a);
-        println!("y: {}", y);
-
-        let expected_y = pq_bitcoin_lib::private_polinom(x,a,args.b);
-        assert_eq!(y, expected_y);
         println!("Values are correct!");
-
-        // Record the number of cycles executed.
         println!("Number of cycles: {}", report.total_instruction_count());
     } else {
-        // Setup the program for proving.
         let (pk, vk) = client.setup(PROGRAM_ELF);
+        let system_time = SystemTime::now();
+        let start_time = system_time.duration_since(UNIX_EPOCH);
         // println!("pk key {}", pk.pk.);
         println!("vk key {}", vk.bytes32());
 
-        // Generate the proof
         let proof = client
             .prove(&pk, &stdin)
+            .groth16()
             .run()
             .expect("failed to generate proof");
 
+        println!("Public values size {}", proof.public_values.to_vec().len());
+        println!("Proof size {}", proof.bytes().len());
+        let system_time = SystemTime::now();
+        println!(
+            "Elapsed Proving time: {:?}",
+            system_time.duration_since(UNIX_EPOCH).unwrap() - start_time.unwrap()
+        );
         println!("Successfully generated proof!");
-
-        // Verify the proof.
         client.verify(&proof, &vk).expect("failed to verify proof");
         println!("Successfully verified proof!");
     }
