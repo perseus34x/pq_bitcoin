@@ -1,30 +1,50 @@
-//! A simple program that takes a number `n` as input, and writes the `n-1`th and `n`th fibonacci
-//! number as an output.
-
-// These two lines are necessary for the program to properly compile.
-//
-// Under the hood, we wrap your main function with some extra code so that it behaves properly
-// inside the zkVM.
 #![no_main]
+
+ use alloy_sol_types::private::Bytes;
+use alloy_sol_types::SolType;
+
+use hashes::{sha256, Hash};
+use secp256k1::{ecdsa, Error, Message, PublicKey, Secp256k1, Verification};
+use pq_bitcoin_lib::{public_key_to_address, PublicValuesStruct};
 sp1_zkvm::entrypoint!(main);
 
-use alloy_sol_types::SolType;
-use fibonacci_lib::{fibonacci, PublicValuesStruct};
+
+fn verify<C: Verification>(
+    secp: &Secp256k1<C>,
+    msg: &[u8],
+    sig: [u8; 64],
+    pubkey: [u8; 33],
+) -> Result<bool, Error> {
+    let msg = sha256::Hash::hash(msg);
+    let msg = Message::from_digest_slice(msg.as_ref())?;
+    let sig = ecdsa::Signature::from_compact(&sig)?;
+    let pubkey = PublicKey::from_slice(&pubkey)?;
+    let result = secp.verify_ecdsa(&msg, &sig, &pubkey).is_ok();
+    Ok(result)
+}
 
 pub fn main() {
-    // Read an input to the program.
-    //
-    // Behind the scenes, this compiles down to a custom system call which handles reading inputs
-    // from the prover.
-    let n = sp1_zkvm::io::read::<u32>();
+    let secp = Secp256k1::new();
+    let pubkey_vec: Vec<u8> = sp1_zkvm::io::read::<Vec<u8>>();
+    // Convert Vec<u8> into [u8; 33]
+    let pubkey: [u8; 33] = pubkey_vec
+        .try_into()
+        .expect("Compressed public key must be exactly 33 bytes");
+    let btc_address: Vec<u8> = sp1_zkvm::io::read::<Vec<u8>>();
+    let sig_serialized: Vec<u8> = sp1_zkvm::io::read::<Vec<u8>>();
+    let pq_public_key: Vec<u8> = sp1_zkvm::io::read::<Vec<u8>>();
 
-    // Compute the n'th fibonacci number using a function from the workspace lib crate.
-    let (a, b) = fibonacci(n);
+    assert!(verify(&secp, btc_address.as_slice(), sig_serialized.try_into().unwrap(), pubkey).unwrap());
+    let derived_btc_address = public_key_to_address(&pubkey);
+    assert_eq!(derived_btc_address, btc_address);
 
     // Encode the public values of the program.
-    let bytes = PublicValuesStruct::abi_encode(&PublicValuesStruct { n, a, b });
-
-    // Commit to the public values of the program. The final proof will have a commitment to all the
-    // bytes that were committed to.
+   let bytes = PublicValuesStruct::abi_encode(&PublicValuesStruct {
+       btc_address: Bytes::from(btc_address),
+       pq_pubkey: Bytes::from(pq_public_key),
+   });
+    //committing to the public parameters
     sp1_zkvm::io::commit_slice(&bytes);
 }
+
+

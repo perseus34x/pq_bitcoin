@@ -1,11 +1,11 @@
 [package]
 version = "0.1.0"
-name = "fibonacci-script"
-edition = "2021"
-default-run = "fibonacci"
+name = "pq_bitcoin-script"
+edition = "2024"
+default-run = "pq_bitcoin"
 
 [[bin]]
-name = "fibonacci"
+name = "pq_bitcoin"
 path = "src/bin/main.rs"
 
 [[bin]]
@@ -17,15 +17,18 @@ name = "vkey"
 path = "src/bin/vkey.rs"
 
 [dependencies]
-sp1-sdk = "5.0.0"
+sp1-sdk = { workspace = true }
 serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
 serde = { version = "1.0.200", default-features = false, features = ["derive"] }
 clap = { version = "4.0", features = ["derive", "env"] }
 tracing = "0.1.40"
 hex = "0.4.3"
 alloy-sol-types = { workspace = true }
-fibonacci-lib = { path = "../lib" }
+pq_bitcoin-lib = { path = "../lib" }
 dotenv = "0.15.0"
+secp256k1 = { workspace = true }
+hashes = { workspace = true }
+rand = "0.9.1"
 
 [build-dependencies]
 sp1-build = "5.0.0"

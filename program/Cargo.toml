@@ -1,9 +1,12 @@
 [package]
 version = "0.1.0"
-name = "fibonacci-program"
-edition = "2021"
+name = "pq_bitcoin-program"
+edition = "2024"
 
 [dependencies]
+pq_bitcoin-lib = { path = "../lib" }
 alloy-sol-types = { workspace = true }
-sp1-zkvm = "5.0.0"
-fibonacci-lib = { path = "../lib" }
+alloy-primitives = { workspace = true }
+sp1-zkvm = { workspace = true }
+hashes = { workspace = true }
+secp256k1 = {workspace = true}
