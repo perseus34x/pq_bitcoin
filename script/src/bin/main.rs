@@ -11,7 +11,6 @@
 //! ```
 
 /// The ELF (executable and linkable format) file for the Succinct RISC-V zkVM.
-use clap::Parser;
 use hashes::{sha256, Hash};
 use pq_bitcoin_lib::public_key_to_address;
 use rand::rngs::OsRng;
@@ -19,8 +18,14 @@ use rand::TryRngCore;
 use secp256k1::{ecdsa, Error, Message, PublicKey, Secp256k1, SecretKey, Signing};
 use sp1_sdk::{include_elf, HashableKey, ProverClient, SP1Stdin};
 use std::time::{SystemTime, UNIX_EPOCH};
+use clap::{Parser, ValueEnum};
 
-
+#[derive(ValueEnum, Clone, Debug)]
+enum ProveType {
+    Normal,
+    Groth,
+    Plonk,
+}
 pub const PROGRAM_ELF: &[u8] = include_elf!("pq_bitcoin-program");
 
 fn sign<C: Signing>(
@@ -34,7 +39,7 @@ fn sign<C: Signing>(
     let msg = sha256::Hash::hash(address.as_slice());
     let msg = Message::from_digest_slice(msg.as_ref())?;
 
-    Ok((secp.sign_ecdsa(&msg, &sec_key), pub_key,address))
+    Ok((secp.sign_ecdsa(&msg, &sec_key), pub_key, address))
 }
 
 #[derive(Parser, Debug)]
@@ -44,8 +49,12 @@ struct Args {
     execute: bool,
     #[clap(long)]
     prove: bool,
+    #[clap(long, value_enum, default_value_t = ProveType::Normal)]
+    prove_type: ProveType,
 }
-
+//RUST_LOG=info cargo run --release -- --prove --prove-type=normal
+//RUST_LOG=info cargo run --release -- --prove --prove-type=groth16
+//RUST_LOG=info cargo run --release -- --prove --prove-type=plonkj
 fn main() {
     sp1_sdk::utils::setup_logger();
     dotenv::dotenv().ok();
@@ -66,7 +75,7 @@ fn main() {
         .try_fill_bytes(&mut seckey)
         .expect("cannot fill random bytes");
 
-     let (signature, pub_key, address) = sign(&secp, seckey).unwrap();
+    let (signature, pub_key, address) = sign(&secp, seckey).unwrap();
     let serialized_pub_key = pub_key.serialize();
     let serialize_sig = signature.serialize_compact();
 
@@ -88,19 +97,30 @@ fn main() {
         let start_time = system_time.duration_since(UNIX_EPOCH);
         // println!("pk key {}", pk.pk.);
         println!("vk key {}", vk.bytes32());
-        /*
-        Public values size 224
-        Proof size 260
-        Elapsed Proving time: 389.364518s
-        */
-        let proof = client
-            .prove(&pk, &stdin)
-            .plonk()
-            .run()
-            .expect("failed to generate proof");
 
+        let proof = match args.prove_type {
+            ProveType::Groth => client
+                .prove(&pk, &stdin)
+                .groth16()
+                .run()
+                .expect("failed to generate Groth16 proof"),
+
+            ProveType::Plonk => client
+                .prove(&pk, &stdin)
+                .plonk()
+                .run()
+                .expect("failed to generate Plonk proof"),
+
+            ProveType::Normal => client
+                .prove(&pk, &stdin)
+                .run()
+                .expect("failed to generate normal proof"),
+        };
+        if matches!(args.prove_type, ProveType::Groth|ProveType::Plonk) {
+            println!("Proof size {}", proof.bytes().len());
+        }
+        
         println!("Public values size {}", proof.public_values.to_vec().len());
-        println!("Proof size {}", proof.bytes().len());
         let system_time = SystemTime::now();
         println!(
             "Elapsed Proving time: {:?}",

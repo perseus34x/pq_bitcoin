@@ -11,7 +11,7 @@ alloy-sol-types = "1.1.1"
 alloy-primitives = "1.1.1"
 secp256k1 = { git = "https://github.com/sp1-patches/rust-secp256k1", tag = "patch-0.29.1-sp1-5.0.0" } # Note this tag aligns with SP1 v5.x
 hashes = { package = "bitcoin_hashes", version = ">= 0.12, <= 0.14", default-features = false }
-sp1-zkvm = "5.0.0"
+sp1-zkvm = "5.0.4"
 
 # Add explicit SP1 dependencies (aligned version)
 sp1-sdk = "5.0.4"
