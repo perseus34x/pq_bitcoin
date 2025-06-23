@@ -12,7 +12,7 @@
 
 /// The ELF (executable and linkable format) file for the Succinct RISC-V zkVM.
 use hashes::{sha256, Hash};
-use pq_bitcoin_lib::public_key_to_btc_address;
+use pq_bitcoin_lib::{public_key_to_btc_address, public_key_to_eth_address};
 use rand::rngs::OsRng;
 use rand::TryRngCore;
 use secp256k1::{ecdsa, Error, Message, PublicKey, Secp256k1, SecretKey, Signing};
@@ -34,7 +34,7 @@ fn sign<C: Signing>(
 ) -> Result<(ecdsa::Signature, PublicKey, Vec<u8>), Error> {
     let sec_key = SecretKey::from_slice(&sec_key)?;
     let pub_key = sec_key.public_key(secp);
-    let address = public_key_to_btc_address(&pub_key.serialize());
+    let address = public_key_to_eth_address(&pub_key.serialize_uncompressed());
 
     let msg = sha256::Hash::hash(address.as_slice());
     let msg = Message::from_digest_slice(msg.as_ref())?;
@@ -53,7 +53,7 @@ struct Args {
     prove_type: ProveType,
 }
 //RUST_LOG=info cargo run --release -- --prove --prove-type=normal
-//RUST_LOG=info cargo run --release -- --prove --prove-type=groth16
+//RUST_LOG=info cargo run --release -- --prove --prove-type=groth
 //RUST_LOG=info cargo run --release -- --prove --prove-type=plonkj
 fn main() {
     sp1_sdk::utils::setup_logger();
@@ -76,7 +76,7 @@ fn main() {
         .expect("cannot fill random bytes");
 
     let (signature, pub_key, address) = sign(&secp, seckey).unwrap();
-    let serialized_pub_key = pub_key.serialize();
+    let serialized_pub_key = &pub_key.serialize_uncompressed();
     let serialize_sig = signature.serialize_compact();
 
     stdin.write(&serialized_pub_key.to_vec());
@@ -119,7 +119,7 @@ fn main() {
         if matches!(args.prove_type, ProveType::Groth|ProveType::Plonk) {
             println!("Proof size {}", proof.bytes().len());
         }
-        
+
         println!("Public values size {}", proof.public_values.to_vec().len());
         let system_time = SystemTime::now();
         println!(

@@ -8,8 +8,12 @@ use secp256k1::Message;
 
 sol! {
     /// The public values encoded as a struct that can be easily deserialized inside Solidity.
-    struct PublicValuesStruct {
+    struct PublicBTCValues {
         bytes btc_address;     // fixed-length address
+        bytes pq_pubkey;       // fixed-length pq public key
+    }
+    struct PublicEthValues {
+        bytes eth_address;     // fixed-length address
         bytes pq_pubkey;       // fixed-length pq public key
     }
 }
@@ -41,9 +45,9 @@ pub fn public_key_to_btc_address(pubkey: &[u8]) -> Vec<u8> {
 
 }
 pub fn public_key_to_eth_address(pubkey: &[u8]) -> Vec<u8> {
-    assert_eq!(pubkey.len(), 64, "Public key should be 64 bytes (compressed)");
+    assert_eq!(pubkey.len(), 65, "Public key should be 64 bytes (compressed)");
     let mut hasher = Sha3_256::new();
-    hasher.update(pubkey);
+    hasher.update(&pubkey[1..65]);
     let hash = hasher.finalize();
 
     hash[20..].to_vec()
