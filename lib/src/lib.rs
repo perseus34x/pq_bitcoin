@@ -1,6 +1,7 @@
 use alloy_sol_types::sol;
- 
+
 use alloy_sol_types::SolType;
+use sha3::{Digest, Sha3_256};
 
 use hashes::{ripemd160, sha256, Hash};
 use secp256k1::Message;
@@ -13,20 +14,15 @@ sol! {
     }
 }
 
-
-pub fn public_key_to_address(pubkey: &[u8]) -> Vec<u8> {
+pub fn public_key_to_btc_address(pubkey: &[u8]) -> Vec<u8> {
     assert_eq!(pubkey.len(), 33, "Public key should be 33 bytes (compressed)");
     // Step 1: SHA-256 hash
     let msg = sha256::Hash::hash(pubkey);
     let msg = Message::from_digest_slice(msg.as_ref()).unwrap();
 
-    // println!("first sha256 {:?}", hex::encode(msg.as_ref()));
-
     // Step 2: RIPEMD-160 hash
     let ripemd160_hash = ripemd160::Hash::hash(msg.as_ref());
     let msg :  &[u8] = ripemd160_hash.as_ref();
-
-    // println!("ripemd {:?}", hex::encode(msg));
 
     // Step 3: Add version byte (0x00 for mainnet)
     let mut versioned_payload = vec![0x00];
@@ -44,4 +40,13 @@ pub fn public_key_to_address(pubkey: &[u8]) -> Vec<u8> {
     versioned_payload
 
 }
- 
+pub fn public_key_to_eth_address(pubkey: &[u8]) -> Vec<u8> {
+    assert_eq!(pubkey.len(), 64, "Public key should be 64 bytes (compressed)");
+    let mut hasher = Sha3_256::new();
+    hasher.update(pubkey);
+    let hash = hasher.finalize();
+
+    hash[20..].to_vec()
+
+}
+

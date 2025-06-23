@@ -5,7 +5,7 @@ use alloy_sol_types::SolType;
 
 use hashes::{sha256, Hash};
 use secp256k1::{ecdsa, Error, Message, PublicKey, Secp256k1, Verification};
-use pq_bitcoin_lib::{public_key_to_address, PublicValuesStruct};
+use pq_bitcoin_lib::{public_key_to_btc_address, PublicValuesStruct};
 sp1_zkvm::entrypoint!(main);
 
 
@@ -35,7 +35,7 @@ pub fn main() {
     let pq_public_key: Vec<u8> = sp1_zkvm::io::read::<Vec<u8>>();
 
     assert!(verify(&secp, btc_address.as_slice(), sig_serialized.try_into().unwrap(), pubkey).unwrap());
-    let derived_btc_address = public_key_to_address(&pubkey);
+    let derived_btc_address = public_key_to_btc_address(&pubkey);
     assert_eq!(derived_btc_address, btc_address);
 
     // Encode the public values of the program.
